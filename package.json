@@ -1,0 +1,7 @@
+{
+  "name": "growth-watch",
+  "version": "1.0.0",
+  "description": "A file tree watcher that progressively adds directories to watch.",
+  "main": "index.js",
+  "license": "MIT"
+}
