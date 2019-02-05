@@ -5,6 +5,7 @@
         "paths": { "@src/*": ["src/*"] }
     },
     "include": [
+        "types/**/*",
         "src/**/*",
         "test/**/*",
         "perf/**/*",

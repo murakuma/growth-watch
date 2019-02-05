@@ -16,12 +16,21 @@
   "devDependencies": {
     "@enmove/for-node": "^1.0.0-alpha.3",
     "@types/chokidar": "^1.7.5",
+    "@types/event-kit": "^2.4.0",
+    "@types/fs-extra": "^5.0.4",
+    "@types/lodash": "^4.14.120",
     "@types/node": "^10.12.21",
+    "@types/ramda": "^0.25.47",
+    "fs-extra": "^7.0.1",
+    "lodash": "^4.17.11",
     "npm-run-all": "^4.1.5",
+    "ramda": "^0.26.1",
     "shx": "^0.3.2",
     "ts-node": "^8.0.2"
   },
   "dependencies": {
-    "chokidar": "^2.0.4"
+    "chokidar": "^2.0.4",
+    "event-kit": "^2.5.3",
+    "mapped-disposable": "^1.0.2"
   }
 }
