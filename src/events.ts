@@ -12,6 +12,7 @@ export interface DirectoryWatcherEvents {
 
     // Error
     error: Error;
+    childError: Error;
 }
 
 export interface TreeWatcherEvents extends DirectoryWatcherEvents {

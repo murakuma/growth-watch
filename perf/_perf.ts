@@ -37,6 +37,8 @@ function _it( name: string, fn: PerfFunction ) {
     currentPerfGroups.entries.push( { name, fn } );
 }
 
+_it.skip = ( ...args: any[] ) => { /* noop */ };
+
 const _global = global as any;
 _global.describe = _describe;
 _global.it = _it;

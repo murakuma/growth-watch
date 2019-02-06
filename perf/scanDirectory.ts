@@ -29,7 +29,35 @@ describe( "scanDirectory", () => {
 
         scanDir( FIXTURE_DIR );
 
-        console.log( `deep scane: ${allItems.length} items found.` );
+        console.log( `deep scan: ${allItems.length} items found.` );
+    } );
+
+    it( "deep scan and watch", () => {
+        const watchers: fs.FSWatcher[] = [];
+        const scanDir = ( root: string, path: string = "." ) => {
+            const absPath = nodePath.resolve( root, path );
+
+            // Create watcher
+            const watcher = fs.watch( absPath );
+            watchers.push( watcher );
+
+            // Collect all child items
+            const items = fs.readdirSync( absPath );
+            items.forEach( item => {
+                const relPath = path === "." ? item : ( path + "/" + item );
+                if ( fs.statSync( nodePath.resolve( root, relPath ) ).isDirectory() ) {
+                    scanDir( root, relPath );
+                }
+            } );
+        };
+
+        scanDir( FIXTURE_DIR );
+
+        console.log( `deep scan and watch: ${watchers.length} watchers have been created.` );
+
+        for ( const watcher of watchers ) {
+            watcher.close();
+        }
     } );
 
     it( "shallow watch", done => {
@@ -61,7 +89,7 @@ describe( "scanDirectory", () => {
 
     } );
 
-    it( "deep watch", done => {
+    it.skip( "deep watch", done => {
 
         const items: string[] = [];
 

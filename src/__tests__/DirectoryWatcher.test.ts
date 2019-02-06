@@ -1,18 +1,25 @@
 
+import { resolve } from "path";
+
 import { CompositeDisposable } from "event-kit";
+import fs from "fs-extra";
+import _ from "lodash";
 
 import {
-    ensureFixtureDirs,
     FIXTURES,
+    prepareFixtureDirs,
 } from "./fixtures";
-import { normalizePaths } from "./utils";
+import {
+    normalizePaths,
+    unixify,
+} from "./utils";
 
 import { DirectoryWatcher } from "../DirectoryWatcher";
 
 describe( "DirectoryWatcher", () => {
 
     beforeAll( () => {
-        ensureFixtureDirs();
+        prepareFixtureDirs();
     } );
 
     let disposables: CompositeDisposable;
@@ -23,114 +30,165 @@ describe( "DirectoryWatcher", () => {
         disposables.dispose();
     } );
 
-    const createWatcher = ( path: string, glob: string, depth: number ): [DirectoryWatcher, () => string[]] => {
-        const watcher = new DirectoryWatcher(
-            FIXTURES.BIN_NESTED,
-            path, glob, { depth }
-        );
+    const createWatcher = (
+        rootDir: string, path: string
+    ): [DirectoryWatcher, () => string[]] => {
+
+        const watcher = new DirectoryWatcher( rootDir, path );
         disposables.add( watcher );
 
         const paths: string[] = [];
         const getPaths = () => normalizePaths( paths );
 
         watcher.on( "add", event => paths.push( event.path ) );
+        watcher.on( "remove", event => _.pull( paths, event.path ) );
 
         return [watcher, getPaths];
     };
 
-    describe( "initial items", () => {
-        it( "should add initial items (root)", done => {
-            const [watcher, getPaths] = createWatcher( ".", "*/", 0 );
+    const ensureItems = ( rootDir: string, itemMap: { [key: string]: boolean } ) => {
+        _.forOwn( itemMap, ( isDir, path ) => {
+            const absPath = resolve( rootDir, path );
+            if ( isDir ) {
+                fs.ensureDirSync( absPath );
+            } else {
+                fs.ensureFileSync( absPath );
+            }
+        } );
+    };
 
-            watcher.on( "ready", event => {
-                expect( event.path ).toBe( "." );
-                expect( getPaths() ).toEqual( ["0", "1"] );
+    it( "should emit add events on initialization", done => {
+        const rootDir = resolve( FIXTURES.ROOT, "initial" );
 
-                done();
-            } );
+        ensureItems( rootDir, {
+            "foo/bar": true,
+            "foo/baz": false,
         } );
 
-        it( "should add initial items (non-root)", done => {
-            const [watcher, getPaths] = createWatcher( "0", "*/", 0 );
+        const [watcher, getPaths] = createWatcher( rootDir, "foo" );
 
-            watcher.on( "ready", event => {
-                expect( event.path ).toBe( "0" );
-                expect( getPaths() ).toEqual( ["0/00", "0/01"] );
+        watcher.on( "ready", e => {
+            expect( e.path ).toBe( "foo" );
+            expect( getPaths() ).toEqual( ["foo/bar", "foo/baz"] );
 
-                done();
-            } );
+            const { items } = watcher;
+            expect( items.get( "bar" )!.isDirectory() ).toBeTruthy();
+            expect( items.get( "baz" )!.isDirectory() ).toBeFalsy();
+            expect( [...items.keys()].sort() ).toEqual( ["bar", "baz"] );
+
+            done();
+        } );
+    } );
+
+    it( "should emit add events", done => {
+        const rootDir = resolve( FIXTURES.ROOT, "addition" );
+
+        ensureItems( rootDir, { "foo/bar": true } );
+
+        const [watcher, getPaths] = createWatcher( rootDir, "foo" );
+
+        watcher.on( "ready", () => {
+            ensureItems( rootDir, { "foo/baz": false } );
         } );
 
-        it( "should add initial items recursively (root)", done => {
-            const [watcher, getPaths] = createWatcher( ".", "**/*/", 2 );
+        watcher.on( "add", e => {
+            const uPath = unixify( e.path );
 
-            watcher.on( "ready", event => {
-                expect( event.path ).toBe( "." );
-                expect( getPaths() ).toEqual( [
-                    "0",
-                        "0/00",
-                            "0/00/000",
-                            "0/00/001",
-                        "0/01",
-                            "0/01/010",
-                            "0/01/011",
-                    "1",
-                        "1/10",
-                            "1/10/100",
-                            "1/10/101",
-                        "1/11",
-                            "1/11/110",
-                            "1/11/111",
-                ] );
+            if ( uPath === "foo/baz" ) {
+                expect( e.isDirectory ).toBeFalsy();
+
+                ensureItems( rootDir, { "foo/qux": true } );
+
+            } else if ( uPath === "foo/qux" ) {
+                expect( e.isDirectory ).toBeTruthy();
 
                 done();
-            } );
+            }
+        } );
+    } );
+
+    it( "should emit change events", done => {
+        const rootDir = resolve( FIXTURES.ROOT, "update" );
+
+        ensureItems( rootDir, { "foo/bar": false } );
+
+        const [watcher, getPaths] = createWatcher( rootDir, "foo" );
+
+        watcher.on( "ready", () => {
+            fs.writeFileSync( resolve( rootDir, "foo/bar" ), "updated" );
         } );
 
-        it( "should add initial items recursively (non-root)", done => {
-            const [watcher, getPaths] = createWatcher( "1", "**/*/", 2 );
+        watcher.on( "change", e => {
+            const uPath = unixify( e.path );
 
-            watcher.on( "ready", event => {
-                expect( event.path ).toBe( "1" );
-                expect( getPaths() ).toEqual( [
-                    "1/10",
-                        "1/10/100",
-                            "1/10/100/1000",
-                            "1/10/100/1001",
-                        "1/10/101",
-                            "1/10/101/1010",
-                            "1/10/101/1011",
-                    "1/11",
-                        "1/11/110",
-                            "1/11/110/1100",
-                            "1/11/110/1101",
-                        "1/11/111",
-                            "1/11/111/1110",
-                            "1/11/111/1111",
-                ] );
+            expect( uPath ).toBe( "foo/bar" );
+            done();
+        } );
+    } );
+
+    it( "should emit remove and add event on renaming", done => {
+        const rootDir = resolve( FIXTURES.ROOT, "renaming" );
+
+        ensureItems( rootDir, {
+            "foo/bar": true,
+            "foo/qux": false,
+        } );
+
+        const [watcher, getPaths] = createWatcher( rootDir, "foo" );
+        const handleRemove = jest.fn();
+
+        watcher.on( "ready", () => {
+            fs.renameSync(
+                resolve( rootDir, "foo/bar" ),
+                resolve( rootDir, "foo/baz" )
+            );
+        } );
+
+        watcher.on( "add", e => {
+            const uPath = unixify( e.path );
+
+            if ( uPath === "foo/baz" ) {
+                fs.renameSync(
+                    resolve( rootDir, "foo/qux" ),
+                    resolve( rootDir, "foo/quux" )
+                );
+
+            } else if ( uPath === "foo/quux" ) {
+                expect( getPaths() ).toEqual( ["foo/baz", "foo/quux"] );
+                expect( [...watcher.items.keys()].sort() ).toEqual( ["baz", "quux"] );
+
+                expect( handleRemove ).toHaveBeenCalledTimes( 2 );
 
                 done();
-            } );
+            }
         } );
 
-        it( "should add initial items with overscan", done => {
-            const [watcher, getPaths] = createWatcher( "1", "*/*/*/", 2 );
+        watcher.on( "remove", handleRemove );
+    } );
 
-            watcher.on( "ready", event => {
-                expect( getPaths() ).toEqual( [
-                    "1/10/100/1000",
-                    "1/10/100/1001",
-                    "1/10/101/1010",
-                    "1/10/101/1011",
-                    "1/11/110/1100",
-                    "1/11/110/1101",
-                    "1/11/111/1110",
-                    "1/11/111/1111",
-                ] );
+    it( "should emit an error event on deletion of the watched directory", done => {
+        const rootDir = resolve( FIXTURES.ROOT, "deletion" );
 
-                done();
-            } );
+        ensureItems( rootDir, {
+            "foo/bar": true,
+            "foo/baz": false,
         } );
+
+        const [watcher, getPaths] = createWatcher( rootDir, "foo" );
+        const handleRemove = jest.fn();
+
+        watcher.on( "ready", () => {
+            fs.removeSync( rootDir );
+        } );
+
+        watcher.on( "error", () => {
+            expect( getPaths() ).toHaveLength( 0 );
+            expect( handleRemove ).toHaveBeenCalledTimes( 2 );
+
+            done();
+        } );
+
+        watcher.on( "remove", handleRemove );
     } );
 
 } );
