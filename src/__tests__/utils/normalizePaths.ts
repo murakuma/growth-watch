@@ -1,5 +1,5 @@
 
-import { unixify } from "./unixify";
+import { toPosix } from "../../utils/separator";
 
 /**
  * Normalizes the list of paths by converting back-slashes to forward-slashes
@@ -7,5 +7,5 @@ import { unixify } from "./unixify";
  * @param paths 
  */
 export function normalizePaths( paths: string[] ) {
-    return paths.map( unixify ).sort();
+    return paths.map( toPosix ).sort();
 }

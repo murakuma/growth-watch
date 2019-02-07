@@ -5,15 +5,15 @@ import { CompositeDisposable } from "event-kit";
 import fs from "fs-extra";
 import _ from "lodash";
 
+import { DirectoryWatcher } from "../DirectoryWatcher";
+
+import { toPosix } from "../utils/separator";
 import {
     ensureItems,
     normalizePaths,
     prepareFixtureDir,
     safeRemove,
-    unixify,
 } from "./utils";
-
-import { DirectoryWatcher } from "../DirectoryWatcher";
 
 describe( "DirectoryWatcher", () => {
 
@@ -45,6 +45,25 @@ describe( "DirectoryWatcher", () => {
 
         return [watcher, getPaths];
     };
+
+    it( "should emit ready event even if it is an empty directory", done => {
+        const rootDir = resolve( fixtureDir, "empty" );
+
+        ensureItems( rootDir, { foo: true } );
+
+        const [watcher, getPaths] = createWatcher( rootDir, "foo" );
+
+        expect( watcher.isReady ).toBeFalsy();
+
+        watcher.on( "ready", e => {
+            expect( watcher.isReady ).toBeTruthy();
+            expect( e.path ).toBe( "foo" );
+
+            expect( getPaths() ).toHaveLength( 0 );
+
+            done();
+        } );
+    } );
 
     it( "should emit add events on initialization", done => {
         const rootDir = resolve( fixtureDir, "initial" );
@@ -85,18 +104,18 @@ describe( "DirectoryWatcher", () => {
         } );
 
         watcher.on( "add", e => {
-            const uPath = unixify( e.path );
+            const pPath = toPosix( e.path );
 
-            if ( uPath === "foo/bar" ) {
+            if ( pPath === "foo/bar" ) {
                 expect( e.isInitial ).toBeTruthy();
 
-            } else if ( uPath === "foo/baz" ) {
+            } else if ( pPath === "foo/baz" ) {
                 expect( e.isDirectory ).toBeFalsy();
                 expect( e.isInitial ).toBeFalsy();
 
                 ensureItems( rootDir, { "foo/qux": true } );
 
-            } else if ( uPath === "foo/qux" ) {
+            } else if ( pPath === "foo/qux" ) {
                 expect( e.isDirectory ).toBeTruthy();
                 expect( e.isInitial ).toBeFalsy();
 
@@ -117,9 +136,9 @@ describe( "DirectoryWatcher", () => {
         } );
 
         watcher.on( "change", e => {
-            const uPath = unixify( e.path );
+            const pPath = toPosix( e.path );
 
-            expect( uPath ).toBe( "foo/bar" );
+            expect( pPath ).toBe( "foo/bar" );
             done();
         } );
     } );
@@ -143,15 +162,15 @@ describe( "DirectoryWatcher", () => {
         } );
 
         watcher.on( "add", e => {
-            const uPath = unixify( e.path );
+            const pPath = toPosix( e.path );
 
-            if ( uPath === "foo/baz" ) {
+            if ( pPath === "foo/baz" ) {
                 fs.renameSync(
                     resolve( rootDir, "foo/qux" ),
                     resolve( rootDir, "foo/quux" )
                 );
 
-            } else if ( uPath === "foo/quux" ) {
+            } else if ( pPath === "foo/quux" ) {
                 expect( getPaths() ).toEqual( ["foo/baz", "foo/quux"] );
                 expect( [...watcher.items.keys()].sort() ).toEqual( ["baz", "quux"] );
 

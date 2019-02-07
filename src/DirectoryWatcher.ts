@@ -103,6 +103,12 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
             }
 
             let itemsRemaining = items.length;
+
+            if ( itemsRemaining === 0 ) {
+                this._endInitialScan();
+                return;
+            }
+
             items.forEach( item => {
                 const [relPath] = this._getPathTo( item );
 
