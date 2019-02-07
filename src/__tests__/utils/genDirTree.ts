@@ -3,7 +3,22 @@ import _ from "lodash";
 import R from "ramda";
 
 /**
- * Generates binary directory tree.
+ * Generates binary directory tree with given depth.
+ * 
+ * ```
+ * .
+ * ├── 0
+ * │  ├── 00
+ * │  │  ├── 000
+ * │  │  │  └── ...
+ * │  │  └── 001
+ * │  │     └── ...
+ * │  └── 01
+ * │     └── ...
+ * └── 1
+ *    └── ...
+ * ```
+ * 
  * @param depth 
  */
 export function genBinaryDirTree( depth: number ) {

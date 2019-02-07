@@ -6,11 +6,10 @@ import fs from "fs-extra";
 import _ from "lodash";
 
 import {
-    FIXTURES,
-    prepareFixtureDirs,
-} from "./fixtures";
-import {
+    ensureItems,
     normalizePaths,
+    prepareFixtureDir,
+    safeRemove,
     unixify,
 } from "./utils";
 
@@ -18,8 +17,9 @@ import { DirectoryWatcher } from "../DirectoryWatcher";
 
 describe( "DirectoryWatcher", () => {
 
+    let fixtureDir: string;
     beforeAll( () => {
-        prepareFixtureDirs();
+        fixtureDir = prepareFixtureDir( "DirectoryWatcher" );
     } );
 
     let disposables: CompositeDisposable;
@@ -46,19 +46,8 @@ describe( "DirectoryWatcher", () => {
         return [watcher, getPaths];
     };
 
-    const ensureItems = ( rootDir: string, itemMap: { [key: string]: boolean } ) => {
-        _.forOwn( itemMap, ( isDir, path ) => {
-            const absPath = resolve( rootDir, path );
-            if ( isDir ) {
-                fs.ensureDirSync( absPath );
-            } else {
-                fs.ensureFileSync( absPath );
-            }
-        } );
-    };
-
     it( "should emit add events on initialization", done => {
-        const rootDir = resolve( FIXTURES.ROOT, "initial" );
+        const rootDir = resolve( fixtureDir, "initial" );
 
         ensureItems( rootDir, {
             "foo/bar": true,
@@ -85,7 +74,7 @@ describe( "DirectoryWatcher", () => {
     } );
 
     it( "should emit add events", done => {
-        const rootDir = resolve( FIXTURES.ROOT, "addition" );
+        const rootDir = resolve( fixtureDir, "addition" );
 
         ensureItems( rootDir, { "foo/bar": true } );
 
@@ -117,7 +106,7 @@ describe( "DirectoryWatcher", () => {
     } );
 
     it( "should emit change events", done => {
-        const rootDir = resolve( FIXTURES.ROOT, "update" );
+        const rootDir = resolve( fixtureDir, "update" );
 
         ensureItems( rootDir, { "foo/bar": false } );
 
@@ -136,7 +125,7 @@ describe( "DirectoryWatcher", () => {
     } );
 
     it( "should emit remove and add event on renaming", done => {
-        const rootDir = resolve( FIXTURES.ROOT, "renaming" );
+        const rootDir = resolve( fixtureDir, "renaming" );
 
         ensureItems( rootDir, {
             "foo/bar": true,
@@ -176,7 +165,7 @@ describe( "DirectoryWatcher", () => {
     } );
 
     it( "should emit an error event on deletion of the watched directory", done => {
-        const rootDir = resolve( FIXTURES.ROOT, "deletion" );
+        const rootDir = resolve( fixtureDir, "deletion" );
 
         ensureItems( rootDir, {
             "foo/bar": true,
@@ -187,7 +176,7 @@ describe( "DirectoryWatcher", () => {
         const stubRemove = jest.fn();
 
         watcher.on( "ready", () => {
-            fs.removeSync( rootDir );
+            safeRemove( rootDir );
         } );
 
         watcher.on( "error", () => {
@@ -201,7 +190,7 @@ describe( "DirectoryWatcher", () => {
     } );
 
     it( "should interrupt initial scan", done => {
-        const rootDir = resolve( FIXTURES.ROOT, "interrupt-initial" );
+        const rootDir = resolve( fixtureDir, "interrupt-initial" );
 
         ensureItems( rootDir, { "foo/bar": false } );
 
@@ -226,7 +215,7 @@ describe( "DirectoryWatcher", () => {
     } );
 
     it( "should emit remove and close events on dispose", done => {
-        const rootDir = resolve( FIXTURES.ROOT, "dispose" );
+        const rootDir = resolve( fixtureDir, "dispose" );
 
         ensureItems( rootDir, {
             "foo/bar": true,

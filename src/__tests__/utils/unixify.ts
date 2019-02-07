@@ -1,4 +1,2 @@
 
-export function unixify( path: string ) {
-    return path.replace( /\\/g, "/" );
-}
+export { toPosix as unixify } from "../../utils/separator";
