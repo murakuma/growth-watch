@@ -1,5 +1,5 @@
 
-import { toPosix } from "../../utils/separator";
+import { toPosix } from "../../utils";
 
 /**
  * Normalizes the list of paths by converting back-slashes to forward-slashes

@@ -7,7 +7,7 @@ import _ from "lodash";
 
 import { DirectoryWatcher } from "../DirectoryWatcher";
 
-import { toPosix } from "../utils/separator";
+import { toPosix } from "../utils";
 import {
     ensureItems,
     normalizePaths,
