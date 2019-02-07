@@ -98,13 +98,18 @@ describe( "DirectoryWatcher", () => {
         watcher.on( "add", e => {
             const uPath = unixify( e.path );
 
-            if ( uPath === "foo/baz" ) {
+            if ( uPath === "foo/bar" ) {
+                expect( e.isInitial ).toBeTruthy();
+
+            } else if ( uPath === "foo/baz" ) {
                 expect( e.isDirectory ).toBeFalsy();
+                expect( e.isInitial ).toBeFalsy();
 
                 ensureItems( rootDir, { "foo/qux": true } );
 
             } else if ( uPath === "foo/qux" ) {
                 expect( e.isDirectory ).toBeTruthy();
+                expect( e.isInitial ).toBeFalsy();
 
                 done();
             }
@@ -179,7 +184,7 @@ describe( "DirectoryWatcher", () => {
         } );
 
         const [watcher, getPaths] = createWatcher( rootDir, "foo" );
-        const handleRemove = jest.fn();
+        const stubRemove = jest.fn();
 
         watcher.on( "ready", () => {
             fs.removeSync( rootDir );
@@ -187,12 +192,68 @@ describe( "DirectoryWatcher", () => {
 
         watcher.on( "error", () => {
             expect( getPaths() ).toHaveLength( 0 );
-            expect( handleRemove ).toHaveBeenCalledTimes( 2 );
+            expect( stubRemove ).toHaveBeenCalledTimes( 2 );
 
             done();
         } );
 
-        watcher.on( "remove", handleRemove );
+        watcher.on( "remove", stubRemove );
+    } );
+
+    it( "should interrupt initial scan", done => {
+        const rootDir = resolve( FIXTURES.ROOT, "interrupt-initial" );
+
+        ensureItems( rootDir, { "foo/bar": false } );
+
+        const [watcher] = createWatcher( rootDir, "foo" );
+
+        const stubAdd = jest.fn();
+        const stubReady = jest.fn();
+
+        watcher.on( "add", stubAdd );
+        watcher.on( "ready", stubReady );
+        watcher.on( "close", e => {
+            expect( stubAdd ).not.toHaveBeenCalled();
+            expect( stubReady ).toHaveBeenCalledTimes( 1 );
+
+            expect( watcher.isReady ).toBeTruthy();
+
+            done();
+        } );
+
+        // Immediately dispose
+        watcher.dispose();
+    } );
+
+    it( "should emit remove and close events on dispose", done => {
+        const rootDir = resolve( FIXTURES.ROOT, "dispose" );
+
+        ensureItems( rootDir, {
+            "foo/bar": true,
+            "foo/baz": false,
+        } );
+
+        const [watcher, getPaths] = createWatcher( rootDir, "foo" );
+
+        watcher.on( "ready", () => {
+            expect( getPaths() ).toEqual( [
+                "foo/bar",
+                "foo/baz",
+            ] );
+            watcher.dispose();
+        } );
+        watcher.on( "close", () => {
+            expect( getPaths() ).toHaveLength( 0 );
+            expect( watcher.isReady ).toBeTruthy();
+
+            // At this moment, `disposed` is still false.
+            //
+            // When watcher.dispose is completed, all event listeners registered
+            // to `watcher` will be removed.
+            expect( watcher.disposed ).toBeFalsy();
+
+            done();
+        } );
     } );
 
 } );

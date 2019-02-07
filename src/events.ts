@@ -3,12 +3,13 @@ import { Stats } from "fs";
 
 export interface DirectoryWatcherEvents {
     // File/directory updates
-    add: UpsertEvent;
+    add: AddEvent;
     remove: RemoveEvent;
-    change: UpsertEvent;
+    change: ChangeEvent;
 
-    // Ready
-    ready: ReadyEvent;
+    // Watcher
+    ready: WatcherEvent<"ready">;
+    close: WatcherEvent<"close">;
 
     // Error
     error: Error;
@@ -17,30 +18,34 @@ export interface DirectoryWatcherEvents {
 
 export interface TreeWatcherEvents extends DirectoryWatcherEvents {
     // Collapsibles
-    expand: ExpansionEvent;
-    collapse: ExpansionEvent;
+    expand: ExpandEvent;
+    collapse: CollapseEvent;
 }
 
-interface ItemEvent<EventType extends keyof TreeWatcherEvents> {
+interface WatcherEvent<EventType extends keyof TreeWatcherEvents> {
     type: EventType;
     path: string;
 }
 
-interface FSItemEvent<EventType extends keyof TreeWatcherEvents> extends ItemEvent<EventType> {
+interface AddEvent extends WatcherEvent<"add"> {
+    stats: Stats;
+    isDirectory: boolean;
+    isInitial: boolean;
+}
+
+interface ChangeEvent extends WatcherEvent<"change"> {
+    stats: Stats;
+    isDirectory: false;
+}
+
+interface RemoveEvent extends WatcherEvent<"remove"> {
     isDirectory: boolean;
 }
 
-interface UpsertEvent extends FSItemEvent<"add" | "change"> {
-    stats: Stats;
+interface ExpandEvent extends WatcherEvent<"expand"> {
+    isExpanded: true;
 }
 
-interface RemoveEvent extends FSItemEvent<"remove"> {
-}
-
-interface ReadyEvent extends ItemEvent<"ready"> {
-}
-
-interface ExpansionEvent extends ItemEvent<"expand" | "collapse"> {
-    isExpanded: boolean;
-    reason: "user";
+interface CollapseEvent extends WatcherEvent<"collapse"> {
+    isExpanded: false;
 }

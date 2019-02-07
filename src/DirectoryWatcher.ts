@@ -43,6 +43,12 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
     }
 
     dispose() {
+        if ( !this.disposed ) {
+            this._endInitialScan();
+            this._clearItems();
+
+            this.emit( "close", { type: "close", path: this.path } );
+        }
         this.disposables.dispose();
         return super.dispose();
     }
@@ -101,24 +107,35 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
                 const [relPath] = this._getPathTo( item );
 
                 this._loadStats( item, stats => {
+                    if ( this.isReady ) {
+                        // Initial scan is interrupted
+                        return;
+                    }
+
                     this.emit( "add", {
                         type: "add",
                         path: relPath,
-                        isDirectory: stats.isDirectory(),
                         stats,
+                        isDirectory: stats.isDirectory(),
+                        isInitial: true,
                     } );
                 }, () => {
                     itemsRemaining--;
                     if ( itemsRemaining === 0 ) {
-                        this._isReady = true;
-                        this.emit( "ready", {
-                            type: "ready",
-                            path: this.path,
-                        } );
+                        this._endInitialScan();
                     }
                 } );
             } );
         } );
+    }
+
+    private _endInitialScan() {
+        if ( this._isReady ) {
+            return;
+        }
+
+        this._isReady = true;
+        this.emit( "ready", { type: "ready", path: this.path } );
     }
 
     private _handleChange = ( eventName: string, item: string ) => {
@@ -142,8 +159,9 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
                     this.emit( "add", {
                         type: "add",
                         path: relPath,
-                        isDirectory: stats.isDirectory(),
                         stats,
+                        isDirectory: stats.isDirectory(),
+                        isInitial: false,
                     } );
                 } );
             }
@@ -162,7 +180,11 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
     }
 
     private _handleError = ( err: Error ) => {
-        // Notify that all items in this directory have been removed
+        this._clearItems();
+        this.emit( "error", err );
+    }
+
+    private _clearItems() {
         this.items.forEach( ( stats, item ) => {
             const [relPath] = this._getPathTo( item );
 
@@ -174,8 +196,6 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
         } );
 
         this.items.clear();
-
-        this.emit( "error", err );
     }
 
 }
