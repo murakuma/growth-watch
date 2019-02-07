@@ -18,10 +18,9 @@ import { DirectoryWatcherEvents } from "./events";
 export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
 
     readonly absPath: string;
-
     readonly items: Map<string, fs.Stats> = new Map();
-
     private readonly disposables = new CompositeDisposable();
+    private _isReady: boolean = false;
 
     constructor(
         readonly rootDir: string,
@@ -46,6 +45,10 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
     dispose() {
         this.disposables.dispose();
         return super.dispose();
+    }
+
+    get isReady() {
+        return this._isReady;
     }
 
     /**
@@ -87,9 +90,9 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
     }
 
     private _initialScan() {
-        fs.readdir( this.absPath, ( errReadDir, items ) => {
-            if ( errReadDir ) {
-                this.emit( "error", errReadDir );
+        fs.readdir( this.absPath, ( err, items ) => {
+            if ( err ) {
+                this.emit( "error", err );
                 return;
             }
 
@@ -107,6 +110,7 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
                 }, () => {
                     itemsRemaining--;
                     if ( itemsRemaining === 0 ) {
+                        this._isReady = true;
                         this.emit( "ready", {
                             type: "ready",
                             path: this.path,

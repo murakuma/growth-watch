@@ -67,8 +67,12 @@ describe( "DirectoryWatcher", () => {
 
         const [watcher, getPaths] = createWatcher( rootDir, "foo" );
 
+        expect( watcher.isReady ).toBeFalsy();
+
         watcher.on( "ready", e => {
+            expect( watcher.isReady ).toBeTruthy();
             expect( e.path ).toBe( "foo" );
+
             expect( getPaths() ).toEqual( ["foo/bar", "foo/baz"] );
 
             const { items } = watcher;
