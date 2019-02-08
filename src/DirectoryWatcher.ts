@@ -57,6 +57,18 @@ export class DirectoryWatcher extends Emitter<{}, DirectoryWatcherEvents> {
         return this._isReady;
     }
 
+    waitForReady(): Promise<void> {
+        if ( this.isReady ) {
+            return Promise.resolve();
+        }
+
+        return new Promise( resolve => {
+            this.once( "ready", () => {
+                resolve();
+            } );
+        } );
+    }
+
     /**
      * Returns the relative path from `rootDir` to the given path, and the
      * absolute path.
