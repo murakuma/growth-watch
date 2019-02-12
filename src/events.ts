@@ -1,6 +1,8 @@
 
 import { Stats } from "fs";
 
+import { ValueOf } from "./types";
+
 export interface DirectoryWatcherEvents {
     // File/directory updates
     add: AddEvent;
@@ -16,11 +18,45 @@ export interface DirectoryWatcherEvents {
     childError: Error;
 }
 
-export interface TreeWatcherEvents extends DirectoryWatcherEvents {
+interface TreeWatcherEvents extends DirectoryWatcherEvents {
     // Collapsibles
     expand: ExpandEvent;
     collapse: CollapseEvent;
 }
+
+type BufferedEvents = Pick<
+    TreeWatcherEvents,
+    // Picks event types that extend `WatcherEvent`
+    {
+        [ET in keyof TreeWatcherEvents]: TreeWatcherEvents[ET] extends WatcherEvent<ET> ? ET : never
+    }[keyof TreeWatcherEvents]
+>;
+
+export interface TreeWatcherEventsWithBuffer extends TreeWatcherEvents {
+    buffer: BufferedEvent[];
+}
+
+export const directoryWatcherEventNames: (keyof DirectoryWatcherEvents)[] = [
+    "add",
+    "remove",
+    "change",
+    "ready",
+    "close",
+    "error",
+    "childError",
+];
+
+export const bufferedEventNames: (keyof BufferedEvents)[] = [
+    "add",
+    "remove",
+    "change",
+    "ready",
+    "close",
+    "expand",
+    "collapse",
+];
+
+export type BufferedEvent = ValueOf<BufferedEvents>;
 
 interface WatcherEvent<EventType extends keyof TreeWatcherEvents> {
     type: EventType;

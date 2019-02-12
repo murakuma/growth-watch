@@ -283,5 +283,4 @@ describe( "DirectoryWatcher", () => {
         } );
     } );
 
-
 } );

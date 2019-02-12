@@ -10,6 +10,7 @@ import { TreeWatcher } from "../TreeWatcher";
 import { toPosix } from "../utils";
 import {
     ensureItems,
+    FakeTimer,
     normalizePaths,
     prepareFixtureDir,
     safeRemove,
@@ -286,6 +287,60 @@ describe( "TreeWatcher", () => {
             } );
 
             await safeRemove( resolve( rootDir, "foo" ) );
+        } );
+    } );
+
+    describe( "buffered events", () => {
+
+        const { advance } = FakeTimer;
+
+        beforeEach( () => {
+            FakeTimer.setup();
+        } );
+        afterEach( () => {
+            FakeTimer.teardown();
+        } );
+
+        it( "should buffer multiple events", () => {
+            createWatcher( fixtureDir );
+
+            const stubBuffer = jest.fn();
+            watcher.on( "buffer", stubBuffer );
+
+            // Should be buffere
+            watcher.emit( "add", { type: "add" } as any );
+            watcher.emit( "change", { type: "change" } as any );
+            watcher.emit( "remove", { type: "remove" } as any );
+            watcher.emit( "ready", { type: "ready" } as any );
+            watcher.emit( "close", { type: "close" } as any );
+            watcher.emit( "expand", { type: "expand" } as any );
+            watcher.emit( "collapse", { type: "collapse" } as any );
+
+            // Should not be buffered
+            watcher.emit( "error", {} as any );
+            watcher.emit( "childError", {} as any );
+
+            advance( 10 );
+            expect( stubBuffer ).not.toHaveBeenCalled();
+
+            advance( 40 );
+            expect( stubBuffer ).toHaveBeenCalledTimes( 1 );
+
+            const events = stubBuffer.mock.calls[0][0];
+            expect( events ).toHaveLength( 8 );
+            expect( events ).toEqual( [
+                expect.objectContaining( { type: "expand" } ),
+                { type: "add" },
+                { type: "change" },
+                { type: "remove" },
+                { type: "ready" },
+                { type: "close" },
+                { type: "expand" },
+                { type: "collapse" },
+            ] );
+
+            advance( 100 );
+            expect( stubBuffer ).toHaveBeenCalledTimes( 1 );
         } );
     } );
 

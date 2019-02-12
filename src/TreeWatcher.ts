@@ -3,9 +3,13 @@ import { Emitter } from "event-kit";
 import MappedDisposable from "mapped-disposable";
 
 import { DirectoryWatcher } from "./DirectoryWatcher";
+import { ThrottledBuffer } from "./ThrottledBuffer";
+
 import {
-    DirectoryWatcherEvents,
-    TreeWatcherEvents,
+    BufferedEvent,
+    bufferedEventNames,
+    directoryWatcherEventNames,
+    TreeWatcherEventsWithBuffer,
 } from "./events";
 import {
     findChildren,
@@ -13,22 +17,51 @@ import {
     toPosix,
 } from "./utils";
 
-export interface TreeWactherOptions {
-
-}
-
 const ROOT = ".";
 
-export class TreeWatcher extends Emitter<{}, TreeWatcherEvents> {
+export interface TreeWatcherOptions {
+    /**
+     * Represents the duration it takes to flush the buffered events, in
+     * milliseconds.
+     *
+     * When zero or a negative number is specified, it will never emit any
+     * buffered events.
+     *
+     * @default 50
+     */
+    throttleDelay?: number;
+}
+
+export class TreeWatcher extends Emitter<{}, TreeWatcherEventsWithBuffer> {
 
     private directories: Set<string> = new Set();
     private watchers: Map<string, DirectoryWatcher> = new Map();
     private readonly disposables = new MappedDisposable();
 
+    private readonly throttledBuffer?: ThrottledBuffer<BufferedEvent>;
+
     constructor(
-        readonly rootDir: string
+        readonly rootDir: string,
+        options: TreeWatcherOptions = {}
     ) {
         super();
+
+        // Create throttled buffer
+        const delay = options.throttleDelay === undefined ? 50 : options.throttleDelay;
+        if ( delay > 0 ) {
+            this.throttledBuffer = new ThrottledBuffer( delay );
+            const delegate = this.throttledBuffer.push.bind( this.throttledBuffer );
+
+            // Register event listeners
+            bufferedEventNames.forEach( eventName => {
+                this.on( eventName, delegate );
+            } );
+
+            // Emit buffered events
+            this.throttledBuffer.on( "data", events => {
+                this.emit( "buffer", events );
+            } );
+        }
 
         this.expand( ROOT );
     }
@@ -86,12 +119,7 @@ export class TreeWatcher extends Emitter<{}, TreeWatcherEvents> {
         } );
 
         // Bubble up the event
-        const eventNames: (keyof DirectoryWatcherEvents)[] = [
-            "add", "remove", "change",
-            "ready", "close",
-            "error", "childError",
-        ];
-        eventNames.forEach( eventName => {
+        directoryWatcherEventNames.forEach( eventName => {
             watcher.on( eventName, e => {
                 this.emit( eventName, e );
             } );
