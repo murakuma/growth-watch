@@ -58,30 +58,30 @@ export const bufferedEventNames: (keyof BufferedEvents)[] = [
 
 export type BufferedEvent = ValueOf<BufferedEvents>;
 
-interface WatcherEvent<EventType extends keyof TreeWatcherEvents> {
+export interface WatcherEvent<EventType extends keyof TreeWatcherEvents> {
     type: EventType;
     path: string;
 }
 
-interface AddEvent extends WatcherEvent<"add"> {
+export interface AddEvent extends WatcherEvent<"add"> {
     stats: Stats;
     isDirectory: boolean;
     isInitial: boolean;
 }
 
-interface ChangeEvent extends WatcherEvent<"change"> {
+export interface ChangeEvent extends WatcherEvent<"change"> {
     stats: Stats;
     isDirectory: false;
 }
 
-interface RemoveEvent extends WatcherEvent<"remove"> {
+export interface RemoveEvent extends WatcherEvent<"remove"> {
     isDirectory: boolean;
 }
 
-interface ExpandEvent extends WatcherEvent<"expand"> {
+export interface ExpandEvent extends WatcherEvent<"expand"> {
     isExpanded: true;
 }
 
-interface CollapseEvent extends WatcherEvent<"collapse"> {
+export interface CollapseEvent extends WatcherEvent<"collapse"> {
     isExpanded: false;
 }

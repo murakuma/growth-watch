@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "description": "A file tree watcher that progressively adds directories to watch.",
   "license": "MIT",
-  "main": "index.js",
+  "files": [
+    "dist/"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "run-s clean compile",
     "clean": "shx rm -rf dist",
@@ -13,10 +17,15 @@
     "test": "run-s test:unit",
     "test:unit": "jest"
   },
+  "dependencies": {
+    "@types/event-kit": "^2.4.0",
+    "event-kit": "^2.5.3",
+    "lodash.throttle": "^4.1.1",
+    "mapped-disposable": "^1.0.2"
+  },
   "devDependencies": {
     "@enmove/for-node": "^1.0.0-alpha.3",
     "@types/chokidar": "^1.7.5",
-    "@types/event-kit": "^2.4.0",
     "@types/fs-extra": "^5.0.4",
     "@types/lodash": "^4.14.120",
     "@types/lodash.throttle": "^4.1.4",
@@ -29,10 +38,5 @@
     "ramda": "^0.26.1",
     "shx": "^0.3.2",
     "ts-node": "^8.0.2"
-  },
-  "dependencies": {
-    "event-kit": "^2.5.3",
-    "lodash.throttle": "^4.1.1",
-    "mapped-disposable": "^1.0.2"
   }
 }
