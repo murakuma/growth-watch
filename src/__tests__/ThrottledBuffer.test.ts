@@ -1,27 +1,23 @@
 
 import { ThrottledBuffer } from "../ThrottledBuffer";
 
+import {
+    FakeTimer,
+} from "./utils";
+
 describe( "ThrottledBuffer", () => {
 
-    // Since `lodash.throttle` uses `Date.now()` to determine whether the given
-    // time is elapsed, we need to mock the return value of `Date.now()` in
-    // addition to `setTimeout`.
-    let spyDateNow: jest.SpyInstance<typeof Date.now>;
-    let currentNow: number;
-
-    const advance = ( ms: number ) => {
-        currentNow += ms;
-        jest.advanceTimersByTime( ms );
-    };
+    const { advance } = FakeTimer;
 
     beforeEach( () => {
-        jest.useFakeTimers();
-        currentNow = Date.now();
-        spyDateNow = jest.spyOn( Date, "now" ).mockImplementation( () => currentNow );
+        // Since `lodash.throttle` uses `Date.now()` to determine whether the given
+        // time is elapsed, we need to mock the return value of `Date.now()` in
+        // addition to `setTimeout`.
+        FakeTimer.setup();
     } );
 
     afterEach( () => {
-        spyDateNow.mockRestore();
+        FakeTimer.teardown();
     } );
 
     it( "should flush items after the delay", () => {

@@ -1,10 +1,39 @@
 
 import {
+    FakeTimer,
     genBinaryDirTree,
     normalizePaths,
 } from "./utils";
 
 describe( "Test utils", () => {
+
+    describe( "FakeTimer", () => {
+        it( "should mock 'Date.now' function", () => {
+            const { advance } = FakeTimer;
+
+            FakeTimer.setup();
+
+            const start = Date.now();
+            const stubW100 = jest.fn();
+            const stubW200 = jest.fn();
+
+            setTimeout( stubW100, 100 );
+            setTimeout( stubW200, 200 );
+
+            advance( 100 );
+
+            expect( Date.now() ).toBeCloseTo( start + 100 );
+            expect( stubW100 ).toHaveBeenCalled();
+            expect( stubW200 ).not.toHaveBeenCalled();
+
+            advance( 150 );
+
+            expect( Date.now() ).toBeCloseTo( start + 250 );
+            expect( stubW200 ).toHaveBeenCalled();
+
+            FakeTimer.teardown();
+        } );
+    } );
 
     describe( "genDirTree", () => {
         it( "should generate binary dir tree", () => {
