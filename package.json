@@ -2,6 +2,10 @@
   "name": "growth-watch",
   "version": "1.0.0-alpha.0",
   "description": "A file tree watcher that progressively adds directories to watch.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/murakuma/growth-watch"
+  },
   "license": "MIT",
   "files": [
     "dist/"
